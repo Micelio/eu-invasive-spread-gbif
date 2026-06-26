@@ -38,6 +38,10 @@
   .imgcard .need{padding:16px 10px;text-align:center;background:#fff8e1;color:#8a6d00;font-weight:600}
   .imgcard .src{padding:4px 8px;color:#7a8694;font-size:11px}
   .imgcard a{color:#2E7D9A;text-decoration:none}
+  .imgcard .ids{padding:2px 8px 8px}
+  .imgcard .ids>div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-top:1px solid #ececec;font-size:11.5px}
+  .imgcard .ids .k{color:#7a8694}
+  .imgcard .ids .miss{color:#c2ad4d}
 </style>
 </head>
 <body>
@@ -88,18 +92,30 @@ imgCtl.onAdd=function(){const d=L.DomUtil.create('div','imgcard');d.id='imgcard'
 imgCtl.addTo(map);
 async function loadImage(gbifId,name){
   const card=document.getElementById('imgcard'); if(!card) return;
-  card.style.display='block'; card.innerHTML='<div class="src">loading image…</div>';
-  const q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?wd ?image WHERE { ?wd wdt:P846 "'+gbifId+'" . OPTIONAL { ?wd wdt:P18 ?image } } LIMIT 1';
+  card.style.display='block'; card.innerHTML='<div class="src">loading…</div>';
+  const q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n'+
+    'SELECT ?wd (SAMPLE(?image) AS ?img) (SAMPLE(?inat) AS ?inatId) (SAMPLE(?ncbi) AS ?ncbiId) WHERE {\n'+
+    '  ?wd wdt:P846 "'+gbifId+'" .\n'+
+    '  OPTIONAL { ?wd wdt:P18 ?image } OPTIONAL { ?wd wdt:P3151 ?inat } OPTIONAL { ?wd wdt:P685 ?ncbi }\n'+
+    '} GROUP BY ?wd LIMIT 1';
+  const row=(k,val,href)=>'<div><span class="k">'+k+'</span><span class="v">'+
+    (val?('<a href="'+href+'" target="_blank" rel="noopener">'+val+'</a>'):'<span class="miss">—</span>')+'</span></div>';
   try{
     const r=await fetch(WDEP+'?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
     const b=(await r.json()).results.bindings[0];
-    if(b && b.image){
-      const thumb=b.image.value.replace(/^http:/,'https:')+'?width=320';
+    if(b && b.wd){
       const qid=b.wd.value.split('/').pop();
-      card.innerHTML='<a href="'+b.wd.value+'" target="_blank" rel="noopener"><img src="'+thumb+'" alt="'+name+'"></a><div class="cap">'+name+'</div><div class="src"><a href="'+b.wd.value+'" target="_blank" rel="noopener">'+qid+'</a> · Wikidata P18</div>';
-    } else if(b && b.wd){
-      const qid=b.wd.value.split('/').pop();
-      card.innerHTML='<div class="need">Image needed on Wikidata</div><div class="src"><a href="'+b.wd.value+'" target="_blank" rel="noopener">add image to '+qid+'</a></div>';
+      const inat=(b.inatId&&b.inatId.value)?b.inatId.value:null;
+      const ncbi=(b.ncbiId&&b.ncbiId.value)?b.ncbiId.value:null;
+      const top=(b.img&&b.img.value)
+        ? '<a href="https://www.wikidata.org/wiki/'+qid+'" target="_blank" rel="noopener"><img src="'+b.img.value.replace(/^http:/,'https:')+'?width=320" alt="'+name+'"></a>'
+        : '<div class="need">Image needed on Wikidata</div>';
+      card.innerHTML=top+'<div class="cap">'+name+'</div><div class="ids">'+
+        row('Wikidata', qid, 'https://www.wikidata.org/wiki/'+qid)+
+        row('GBIF', gbifId, 'https://www.gbif.org/species/'+gbifId)+
+        row('iNaturalist', inat, inat?('https://www.inaturalist.org/taxa/'+inat):'')+
+        row('NCBI taxon', ncbi, ncbi?('https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id='+ncbi):'')+
+      '</div>';
     } else {
       card.innerHTML='<div class="need">Image needed on Wikidata</div><div class="src">not linked to Wikidata (no P846)</div>';
     }
