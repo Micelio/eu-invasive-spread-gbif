@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EU invasive alien species — spread over time (GBIF × QLever)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{ --bg:#1d2530; --panel:#272f3b; --line:#3a4452; --text:#e7ecf2; --muted:#9aa6b4; --accent:#2E7D9A; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  #app{display:flex;flex-direction:column;height:100vh}
+  header{padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  header h1{font-size:16px;font-weight:600;margin:0 12px 0 0}
+  select,button{font-size:14px;border-radius:8px;border:1px solid var(--line);background:#1b222c;color:var(--text);padding:7px 10px}
+  select{min-width:280px}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:disabled{opacity:.5;cursor:default}
+  label.chk{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+  #status{font-size:13px;color:var(--muted);margin-left:auto}
+  #map{flex:1;background:#dfe6ea}
+  #bar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-top:1px solid var(--line)}
+  #play{width:42px;height:42px;border-radius:50%;font-size:16px;flex:none}
+  #slider{flex:1}
+  input[type=range]{width:100%}
+  .yr{font-variant-numeric:tabular-nums}
+  #year{font-size:26px;font-weight:700;min-width:74px;text-align:center}
+  #count{font-size:13px;color:var(--muted);min-width:150px}
+  .legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .grad{width:140px;height:10px;border-radius:5px;background:linear-gradient(90deg,#3288bd,#66c2a5,#abdda4,#e6f598,#fee08b,#fdae61,#f46d43,#d53e4f)}
+  details{font-size:12px;color:var(--muted)}
+  details pre{white-space:pre-wrap;background:#1b222c;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:180px;overflow:auto}
+  a{color:#8fc7dd}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>EU invasive species spread</h1>
+    <select id="species" aria-label="Species"></select>
+    <label class="chk"><input type="checkbox" id="euonly" checked> Europe only</label>
+    <button class="primary" id="load">Load &amp; play</button>
+    <span id="status">Pick a species and press “Load &amp; play”.</span>
+  </header>
+  <div id="map"></div>
+  <div id="bar">
+    <button id="play" title="Play / pause">▶</button>
+    <span id="year" class="yr">—</span>
+    <input type="range" id="slider" min="0" max="1" value="0" step="1" disabled>
+    <span id="count" class="yr">—</span>
+    <div class="legend"><span>few</span><div class="grad"></div><span>many</span></div>
+  </div>
+  <div style="padding:6px 16px;background:var(--panel);border-top:1px solid var(--line)">
+    <details><summary>SPARQL query (live on qlever.dev/api/gbif)</summary><pre id="qtext"></pre></details>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+const ENDPOINT = "https://qlever.dev/api/gbif";
+// EU Union-list species. id = accepted GBIF key (synonyms resolved). Some may have no GBIF coverage.
+const SPECIES = [
+{n:"Acacia saligna",id:2978552},{n:"Acacia mearnsii",id:2979775},{n:"Acridotheres cristatellus",id:2489010},{n:"Acridotheres tristis",id:2489005},{n:"Ailanthus altissima",id:3190653},{n:"Alopochen aegyptiaca",id:2498252},{n:"Alternanthera philoxeroides",id:3084923},{n:"Ameiurus melas",id:2340977},{n:"Andropogon virginicus",id:2706080},{n:"Arthurdendyus triangulatus",id:2502792},{n:"Asclepias syriaca",id:3170247},{n:"Asterias amurensis",id:5187508},{n:"Axis axis",id:2440934},{n:"Baccharis halimifolia",id:3129663},{n:"Bipalium kewense",id:2502938},{n:"Brachyponera chinensis",id:1319870},{n:"Broussonetia papyrifera",id:5361944},{n:"Cabomba caroliniana",id:2882443},{n:"Callosciurus erythraeus",id:2437394},{n:"Callosciurus finlaysonii",id:2437399},{n:"Cardiospermum grandiflorum",id:3189935},{n:"Cervus nippon",id:2440954},{n:"Channa argus",id:4284921},{n:"Cherax destructor",id:4417558},{n:"Cipangopaludina chinensis",id:9738098},{n:"Cortaderia jubata",id:2704521},{n:"Corvus splendens",id:2482499},{n:"Crassula helmsii",id:5362054},{n:"Delairea odorata",id:3134183},{n:"Ehrharta calycina",id:2702865},{n:"Pontederia crassipes",id:2765942},{n:"Elodea nuttallii",id:5329212},{n:"Eriocheir sinensis",id:2225776},{n:"Faxonius immunis",id:8930656},{n:"Faxonius rusticus",id:8979506},{n:"Fundulus heteroclitus",id:5712056},{n:"Gambusia affinis",id:2350580},{n:"Gambusia holbrooki",id:2350570},{n:"Gunnera tinctoria",id:2984306},{n:"Gymnocoronis spilanthoides",id:6063677},{n:"Hakea sericea",id:7287606},{n:"Heracleum mantegazzianum",id:3034825},{n:"Heracleum persicum",id:3628745},{n:"Heracleum sosnowskyi",id:3642949},{n:"Herpestes javanicus",id:2434271},{n:"Humulus scandens",id:2984537},{n:"Hydrocotyle ranunculoides",id:7978544},{n:"Impatiens glandulifera",id:2891770},{n:"Koenigia polystachya",id:8848208},{n:"Lagarosiphon major",id:2865565},{n:"Lampropeltis getula",id:9799308},{n:"Lepomis gibbosus",id:2394486},{n:"Lespedeza cuneata",id:8114276},{n:"Limnoperna fortunei",id:5855350},{n:"Lithobates catesbeianus",id:2427091},{n:"Ludwigia grandiflora",id:5421039},{n:"Ludwigia peploides",id:5420991},{n:"Lygodium japonicum",id:2650436},{n:"Lysichiton americanus",id:2869311},{n:"Marisa cornuarietis",id:2292586},{n:"Microstegium vimineum",id:5289808},{n:"Misgurnus anguillicaudatus",id:2367919},{n:"Misgurnus bipartitus",id:2367911},{n:"Morone americana",id:2394604},{n:"Mulinia lateralis",id:2286388},{n:"Muntiacus reevesi",id:2440946},{n:"Myocastor coypus",id:4264680},{n:"Myriophyllum aquaticum",id:5361785},{n:"Myriophyllum heterophyllum",id:5361762},{n:"Nanozostera japonica",id:2863943},{n:"Nasua nasua",id:2433536},{n:"Nyctereutes procyonoides",id:2434552},{n:"Obama nungara",id:8701771},{n:"Ondatra zibethicus",id:5219858},{n:"Orconectes limosus",id:8909595},{n:"Orconectes virilis",id:8971201},{n:"Oxyura jamaicensis",id:2498305},{n:"Pacifastacus leniusculus",id:2226990},{n:"Parthenium hysterophorus",id:3086784},{n:"Cenchrus setaceus",id:5828232},{n:"Perccottus glenii",id:2390064},{n:"Persicaria perfoliata",id:4033648},{n:"Pistia stratiotes",id:2870583},{n:"Platydemus manokwari",id:5892137},{n:"Plotosus lineatus",id:7965247},{n:"Procambarus clarkii",id:2227300},{n:"Procambarus fallax",id:2227309},{n:"Procyon lotor",id:5218786},{n:"Prosopis juliflora",id:5358460},{n:"Pseudorasbora parva",id:2362868},{n:"Pueraria montana",id:2977636},{n:"Pycnonotus cafer",id:2486131},{n:"Pycnonotus jocosus",id:2486151},{n:"Reynoutria japonica",id:2889173},{n:"Reynoutria sachalinensis",id:2889088},{n:"Reynoutria bohemica",id:4038485},{n:"Rugulopteryx okamurae",id:5824863},{n:"Salvinia molesta",id:5274863},{n:"Sciurus carolinensis",id:5219681},{n:"Sciurus niger",id:5219683},{n:"Solenopsis geminata",id:5035187},{n:"Solenopsis invicta",id:5035230},{n:"Solenopsis richteri",id:5035017},{n:"Tamias sibiricus",id:2437450},{n:"Threskiornis aethiopicus",id:2480764},{n:"Trachemys scripta",id:2443002},{n:"Triadica sebifera",id:3054399},{n:"Vespa mandarinia",id:5871429},{n:"Vespa velutina",id:1311477},{n:"Wasmannia auropunctata",id:1315391},{n:"Xenopus laevis",id:5217334}
+].sort((a,b)=>a.n.localeCompare(b.n));
+
+const sel=document.getElementById('species');
+SPECIES.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s.n;sel.appendChild(o);});
+sel.value = SPECIES.findIndex(s=>s.n==="Vespa velutina");
+
+const map=L.map('map',{worldCopyJump:true}).setView([50,8],4);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap, © CARTO'}).addTo(map);
+const GRAD={0.0:'#3288bd',0.2:'#66c2a5',0.4:'#abdda4',0.55:'#e6f598',0.68:'#fee08b',0.8:'#fdae61',0.9:'#f46d43',1.0:'#d53e4f'};
+let heat=L.heatLayer([],{radius:13,blur:20,minOpacity:.35,max:1.0,gradient:GRAD}).addTo(map);
+
+let DATA=[], YEARS=[], maxN=1, playing=false, timer=null;
+const statusEl=document.getElementById('status'),yearEl=document.getElementById('year'),countEl=document.getElementById('count'),
+      slider=document.getElementById('slider'),playBtn=document.getElementById('play');
+
+function buildQuery(id, euOnly){
+  const bbox = euOnly ? 'FILTER(?la > 34 && ?la < 72 && ?lo > -25 && ?lo < 45)\n  ' : '';
+  return `PREFIX gbifsp: <https://www.gbif.org/species/>
+PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+PREFIX dwciri: <http://rs.tdwg.org/dwc/iri/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?glat ?glon ?year (COUNT(*) AS ?n) WHERE {
+  ?sp skos:broader* gbifsp:${id} .
+  ?occ dwciri:toTaxon ?sp ;
+       dwc:decimalLatitude ?lat ; dwc:decimalLongitude ?lon ; dwc:eventDate ?date .
+  BIND(xsd:decimal(?lat) AS ?la)
+  BIND(xsd:decimal(?lon) AS ?lo)
+  ${bbox}BIND(SUBSTR(STR(?date),1,4) AS ?year)
+  FILTER(?year >= "1950" && ?year <= "2025")
+  BIND(ROUND(?la*20)/20 AS ?glat)
+  BIND(ROUND(?lo*20)/20 AS ?glon)
+}
+GROUP BY ?glat ?glon ?year`;
+}
+
+async function load(){
+  stop();
+  const s=SPECIES[+sel.value], euOnly=document.getElementById('euonly').checked;
+  const q=buildQuery(s.id, euOnly);
+  document.getElementById('qtext').textContent=q;
+  statusEl.textContent='Querying GBIF…';
+  document.getElementById('load').disabled=true;
+  try{
+    const url=ENDPOINT+'?query='+encodeURIComponent(q);
+    const r=await fetch(url,{headers:{Accept:'application/sparql-results+json'}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const b=j.results.bindings;
+    DATA=b.map(x=>({lat:+x.glat.value,lon:+x.glon.value,year:+x.year.value,n:+x.n.value}))
+          .filter(d=>isFinite(d.lat)&&isFinite(d.lon)&&d.year);
+    if(!DATA.length){ statusEl.textContent='No georeferenced GBIF occurrences for '+s.n+(euOnly?' in Europe.':'.'); heat.setLatLngs([]); slider.disabled=true; yearEl.textContent='—'; countEl.textContent='—'; document.getElementById('load').disabled=false; return; }
+    YEARS=[...new Set(DATA.map(d=>d.year))].sort((a,b)=>a-b);
+    maxN=Math.max(...DATA.map(d=>d.n));
+    const total=DATA.reduce((a,d)=>a+d.n,0);
+    slider.min=0; slider.max=YEARS.length-1; slider.value=0; slider.disabled=false;
+    const lats=DATA.map(d=>d.lat),lons=DATA.map(d=>d.lon);
+    map.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[20,20],maxZoom:6});
+    statusEl.textContent=s.n+' — '+total.toLocaleString()+' records · '+YEARS[0]+'–'+YEARS[YEARS.length-1];
+    render(0); play();
+  }catch(e){
+    statusEl.textContent='Query failed: '+e.message+' (if this is a CORS/file issue, serve the page via a local web server).';
+  }
+  document.getElementById('load').disabled=false;
+}
+
+function render(idx){
+  const y=YEARS[idx];
+  const pts=[]; let cum=0;
+  for(const d of DATA){ if(d.year<=y){ cum+=d.n; pts.push([d.lat,d.lon, Math.log1p(d.n)/Math.log1p(maxN)]); } }
+  heat.setLatLngs(pts);
+  yearEl.textContent=y;
+  countEl.textContent=cum.toLocaleString()+' records by '+y;
+}
+
+function play(){ if(!YEARS.length)return; playing=true; playBtn.textContent='⏸';
+  timer=setInterval(()=>{ let i=+slider.value; if(i>=YEARS.length-1){ stop(); return; } slider.value=i+1; render(i+1); }, 550); }
+function stop(){ playing=false; playBtn.textContent='▶'; if(timer){clearInterval(timer);timer=null;} }
+
+playBtn.onclick=()=>{ if(playing) stop(); else { if(+slider.value>=YEARS.length-1) {slider.value=0;render(0);} play(); } };
+slider.oninput=()=>{ stop(); render(+slider.value); };
+document.getElementById('load').onclick=load;
+</script>
+</body>
+</html>
