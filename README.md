@@ -4,7 +4,8 @@ An interactive map that animates the spread of any species on the
 **EU list of Invasive Alien Species of Union concern** using **live GBIF
 occurrence data**, queried through the **QLever** SPARQL endpoint.
 
-➡️ **Live demo:** `https://<your-user>.github.io/eu-invasive-spread-gbif/`
+➡️ **Live demo:** https://www.micelio.be/eu-invasive-spread-gbif/
+(also at https://micelio.github.io/eu-invasive-spread-gbif/ — redirects to the line above)
 
 ![screenshot](docs/screenshot.png)
 
