@@ -32,6 +32,12 @@
   details{font-size:12px;color:var(--muted)}
   details pre{white-space:pre-wrap;background:#1b222c;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:180px;overflow:auto}
   a{color:#8fc7dd}
+  .imgcard{width:188px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.3);font-size:12px;color:#1b222c}
+  .imgcard img{display:block;width:100%;height:130px;object-fit:cover;background:#eceae6}
+  .imgcard .cap{padding:6px 8px;font-style:italic}
+  .imgcard .need{padding:16px 10px;text-align:center;background:#fff8e1;color:#8a6d00;font-weight:600}
+  .imgcard .src{padding:4px 8px;color:#7a8694;font-size:11px}
+  .imgcard a{color:#2E7D9A;text-decoration:none}
 </style>
 </head>
 <body>
@@ -75,6 +81,31 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
 const GRAD={0.0:'#3288bd',0.2:'#66c2a5',0.4:'#abdda4',0.55:'#e6f598',0.68:'#fee08b',0.8:'#fdae61',0.9:'#f46d43',1.0:'#d53e4f'};
 let heat=L.heatLayer([],{radius:13,blur:20,minOpacity:.35,max:1.0,gradient:GRAD}).addTo(map);
 
+// Wikidata species image: GBIF id --P846--> item --P18--> image
+const WDEP="https://qlever.dev/api/wikidata";
+const imgCtl=L.control({position:'topright'});
+imgCtl.onAdd=function(){const d=L.DomUtil.create('div','imgcard');d.id='imgcard';d.style.display='none';L.DomEvent.disableClickPropagation(d);return d;};
+imgCtl.addTo(map);
+async function loadImage(gbifId,name){
+  const card=document.getElementById('imgcard'); if(!card) return;
+  card.style.display='block'; card.innerHTML='<div class="src">loading image…</div>';
+  const q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?wd ?image WHERE { ?wd wdt:P846 "'+gbifId+'" . OPTIONAL { ?wd wdt:P18 ?image } } LIMIT 1';
+  try{
+    const r=await fetch(WDEP+'?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
+    const b=(await r.json()).results.bindings[0];
+    if(b && b.image){
+      const thumb=b.image.value.replace(/^http:/,'https:')+'?width=320';
+      const qid=b.wd.value.split('/').pop();
+      card.innerHTML='<a href="'+b.wd.value+'" target="_blank" rel="noopener"><img src="'+thumb+'" alt="'+name+'"></a><div class="cap">'+name+'</div><div class="src"><a href="'+b.wd.value+'" target="_blank" rel="noopener">'+qid+'</a> · Wikidata P18</div>';
+    } else if(b && b.wd){
+      const qid=b.wd.value.split('/').pop();
+      card.innerHTML='<div class="need">Image needed on Wikidata</div><div class="src"><a href="'+b.wd.value+'" target="_blank" rel="noopener">add image to '+qid+'</a></div>';
+    } else {
+      card.innerHTML='<div class="need">Image needed on Wikidata</div><div class="src">not linked to Wikidata (no P846)</div>';
+    }
+  }catch(e){ card.innerHTML='<div class="need">Image needed on Wikidata</div>'; }
+}
+
 let DATA=[], YEARS=[], maxN=1, playing=false, timer=null;
 const statusEl=document.getElementById('status'),yearEl=document.getElementById('year'),countEl=document.getElementById('count'),
       slider=document.getElementById('slider'),playBtn=document.getElementById('play');
@@ -103,6 +134,7 @@ GROUP BY ?glat ?glon ?year`;
 async function load(){
   stop();
   const s=SPECIES[+sel.value], euOnly=document.getElementById('euonly').checked;
+  loadImage(s.id, s.n);
   const q=buildQuery(s.id, euOnly);
   document.getElementById('qtext').textContent=q;
   statusEl.textContent='Querying GBIF…';
