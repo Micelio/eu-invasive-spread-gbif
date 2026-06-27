@@ -20,7 +20,7 @@
   button:disabled{opacity:.5;cursor:default}
   label.chk{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
   #status{font-size:13px;color:var(--muted);margin-left:auto}
-  #map{flex:1;background:#dfe6ea}
+  #map{flex:1;background:#0b1118}
   #bar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-top:1px solid var(--line)}
   #play{width:42px;height:42px;border-radius:50%;font-size:16px;flex:none}
   #slider{flex:1}
@@ -161,10 +161,11 @@ SPECIES.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.tex
 sel.value = SPECIES.findIndex(s=>s.n==="Vespa velutina");
 
 const map=L.map('map',{worldCopyJump:true}).setView([50,8],4);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+// Dark basemap so the heatmap spread stands out (CARTO dark_all)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap, © CARTO'}).addTo(map);
 const GRAD={0.0:'#3288bd',0.2:'#66c2a5',0.4:'#abdda4',0.55:'#e6f598',0.68:'#fee08b',0.8:'#fdae61',0.9:'#f46d43',1.0:'#d53e4f'};
-let heat=L.heatLayer([],{radius:13,blur:20,minOpacity:.35,max:1.0,gradient:GRAD}).addTo(map);
+let heat=L.heatLayer([],{radius:14,blur:22,minOpacity:.5,max:1.0,gradient:GRAD}).addTo(map);
 
 /* ---------- info card: Wikidata image + identifiers + Wikipedia intro (multilingual) ---------- */
 const WDEP="https://qlever.dev/api/wikidata";
