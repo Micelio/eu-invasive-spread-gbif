@@ -87,7 +87,8 @@ const I18N = {
       few:"few",many:"many",sparql:"SPARQL query (live on qlever.dev/api/gbif)",
       imgNeeded:"Image needed on Wikidata",notLinked:"Not linked to Wikidata (no GBIF ID / P846)",loading:"loading…",
       showingInstead:"No Wikipedia article in {req} — showing {lang}.",noArticleAny:"No Wikipedia article available.",
-      readMore:"Read on Wikipedia →",showIn:"Show in"},
+      readMore:"Read on Wikipedia →",showIn:"Show in",
+      bmDark:"Dark",bmDarkNoLabels:"Dark, no labels",bmOSM:"OSM (native names)"},
   nl:{title:"Verspreiding invasieve EU-soorten",europe:"Alleen Europa",load:"Laden & afspelen",
       pick:"Kies een soort en klik op “Laden & afspelen”.",querying:"GBIF wordt bevraagd…",
       loaded:"{name} — {n} waarnemingen · {y0}–{y1}",recordsBy:"{n} waarnemingen t/m {y}",
@@ -96,7 +97,8 @@ const I18N = {
       few:"weinig",many:"veel",sparql:"SPARQL-query (live op qlever.dev/api/gbif)",
       imgNeeded:"Afbeelding nodig op Wikidata",notLinked:"Niet gekoppeld aan Wikidata (geen GBIF-ID / P846)",loading:"laden…",
       showingInstead:"Geen Wikipedia-artikel in het {req} — {lang} wordt getoond.",noArticleAny:"Geen Wikipedia-artikel beschikbaar.",
-      readMore:"Lees verder op Wikipedia →",showIn:"Toon in"},
+      readMore:"Lees verder op Wikipedia →",showIn:"Toon in",
+      bmDark:"Donker",bmDarkNoLabels:"Donker, geen labels",bmOSM:"OSM (lokale namen)"},
   fr:{title:"Propagation des espèces exotiques envahissantes (UE)",europe:"Europe seulement",load:"Charger et lire",
       pick:"Choisissez une espèce puis cliquez sur « Charger et lire ».",querying:"Interrogation de GBIF…",
       loaded:"{name} — {n} observations · {y0}–{y1}",recordsBy:"{n} observations jusqu’en {y}",
@@ -105,7 +107,8 @@ const I18N = {
       few:"peu",many:"beaucoup",sparql:"Requête SPARQL (en direct sur qlever.dev/api/gbif)",
       imgNeeded:"Image requise sur Wikidata",notLinked:"Non lié à Wikidata (pas d’identifiant GBIF / P846)",loading:"chargement…",
       showingInstead:"Aucun article Wikipédia en {req} — affichage en {lang}.",noArticleAny:"Aucun article Wikipédia disponible.",
-      readMore:"Lire sur Wikipédia →",showIn:"Afficher en"},
+      readMore:"Lire sur Wikipédia →",showIn:"Afficher en",
+      bmDark:"Sombre",bmDarkNoLabels:"Sombre, sans étiquettes",bmOSM:"OSM (noms locaux)"},
   de:{title:"Ausbreitung invasiver EU-Arten",europe:"Nur Europa",load:"Laden & abspielen",
       pick:"Wählen Sie eine Art und klicken Sie auf „Laden & abspielen“.",querying:"GBIF wird abgefragt…",
       loaded:"{name} — {n} Nachweise · {y0}–{y1}",recordsBy:"{n} Nachweise bis {y}",
@@ -114,7 +117,8 @@ const I18N = {
       few:"wenige",many:"viele",sparql:"SPARQL-Abfrage (live auf qlever.dev/api/gbif)",
       imgNeeded:"Bild auf Wikidata benötigt",notLinked:"Nicht mit Wikidata verknüpft (keine GBIF-ID / P846)",loading:"lädt…",
       showingInstead:"Kein Wikipedia-Artikel auf {req} — {lang} wird angezeigt.",noArticleAny:"Kein Wikipedia-Artikel verfügbar.",
-      readMore:"Auf Wikipedia lesen →",showIn:"Anzeigen in"},
+      readMore:"Auf Wikipedia lesen →",showIn:"Anzeigen in",
+      bmDark:"Dunkel",bmDarkNoLabels:"Dunkel, ohne Beschriftung",bmOSM:"OSM (lokale Namen)"},
   es:{title:"Propagación de especies invasoras de la UE",europe:"Solo Europa",load:"Cargar y reproducir",
       pick:"Elija una especie y pulse «Cargar y reproducir».",querying:"Consultando GBIF…",
       loaded:"{name} — {n} registros · {y0}–{y1}",recordsBy:"{n} registros hasta {y}",
@@ -123,7 +127,8 @@ const I18N = {
       few:"pocos",many:"muchos",sparql:"Consulta SPARQL (en vivo en qlever.dev/api/gbif)",
       imgNeeded:"Falta imagen en Wikidata",notLinked:"No vinculado a Wikidata (sin ID de GBIF / P846)",loading:"cargando…",
       showingInstead:"No hay artículo de Wikipedia en {req}; se muestra {lang}.",noArticleAny:"No hay artículo de Wikipedia disponible.",
-      readMore:"Leer en Wikipedia →",showIn:"Mostrar en"},
+      readMore:"Leer en Wikipedia →",showIn:"Mostrar en",
+      bmDark:"Oscuro",bmDarkNoLabels:"Oscuro, sin etiquetas",bmOSM:"OSM (nombres locales)"},
   it:{title:"Diffusione delle specie invasive dell’UE",europe:"Solo Europa",load:"Carica e riproduci",
       pick:"Scegli una specie e premi «Carica e riproduci».",querying:"Interrogazione di GBIF…",
       loaded:"{name} — {n} record · {y0}–{y1}",recordsBy:"{n} record fino al {y}",
@@ -132,7 +137,8 @@ const I18N = {
       few:"pochi",many:"molti",sparql:"Query SPARQL (in diretta su qlever.dev/api/gbif)",
       imgNeeded:"Immagine necessaria su Wikidata",notLinked:"Non collegato a Wikidata (nessun ID GBIF / P846)",loading:"caricamento…",
       showingInstead:"Nessun articolo di Wikipedia in {req} — mostro {lang}.",noArticleAny:"Nessun articolo di Wikipedia disponibile.",
-      readMore:"Leggi su Wikipedia →",showIn:"Mostra in"},
+      readMore:"Leggi su Wikipedia →",showIn:"Mostra in",
+      bmDark:"Scuro",bmDarkNoLabels:"Scuro, senza etichette",bmOSM:"OSM (nomi locali)"},
   pt:{title:"Propagação de espécies invasoras da UE",europe:"Apenas Europa",load:"Carregar e reproduzir",
       pick:"Escolha uma espécie e clique em «Carregar e reproduzir».",querying:"A consultar o GBIF…",
       loaded:"{name} — {n} registos · {y0}–{y1}",recordsBy:"{n} registos até {y}",
@@ -141,7 +147,8 @@ const I18N = {
       few:"poucos",many:"muitos",sparql:"Consulta SPARQL (ao vivo em qlever.dev/api/gbif)",
       imgNeeded:"Imagem necessária na Wikidata",notLinked:"Não associado à Wikidata (sem ID GBIF / P846)",loading:"a carregar…",
       showingInstead:"Sem artigo da Wikipédia em {req} — a mostrar {lang}.",noArticleAny:"Nenhum artigo da Wikipédia disponível.",
-      readMore:"Ler na Wikipédia →",showIn:"Mostrar em"}
+      readMore:"Ler na Wikipédia →",showIn:"Mostrar em",
+      bmDark:"Escuro",bmDarkNoLabels:"Escuro, sem rótulos",bmOSM:"OSM (nomes locais)"}
 };
 const navLang=(navigator.language||'en').slice(0,2).toLowerCase();
 let UILANG = I18N[navLang] ? navLang : 'en';
@@ -161,9 +168,22 @@ SPECIES.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.tex
 sel.value = SPECIES.findIndex(s=>s.n==="Vespa velutina");
 
 const map=L.map('map',{worldCopyJump:true}).setView([50,8],4);
-// Dark basemap so the heatmap spread stands out (CARTO dark_all)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap, © CARTO'}).addTo(map);
+// Selectable basemaps (toggle via the layers control, top-left)
+const baseDark   = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap, © CARTO'});
+const baseDarkNL = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap, © CARTO'});
+const baseOSM    = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19,attribution:'© OpenStreetMap contributors'});
+baseDark.addTo(map);   // default: dark with labels
+const BASES=[['bmDark',baseDark],['bmDarkNoLabels',baseDarkNL],['bmOSM',baseOSM]];
+let layersCtl=null;
+function buildLayerControl(){
+  if(layersCtl) layersCtl.remove();
+  const t=I18N[UILANG], obj={};
+  BASES.forEach(([k,lyr])=>{ obj[t[k]]=lyr; });   // active layer stays selected across rebuilds
+  layersCtl=L.control.layers(obj,{},{position:'topleft',collapsed:true}).addTo(map);
+}
 const GRAD={0.0:'#3288bd',0.2:'#66c2a5',0.4:'#abdda4',0.55:'#e6f598',0.68:'#fee08b',0.8:'#fdae61',0.9:'#f46d43',1.0:'#d53e4f'};
 let heat=L.heatLayer([],{radius:14,blur:22,minOpacity:.5,max:1.0,gradient:GRAD}).addTo(map);
 
@@ -351,6 +371,7 @@ function applyI18n(){
   document.getElementById('few').textContent=t.few;
   document.getElementById('many').textContent=t.many;
   document.getElementById('sparqlLabel').textContent=t.sparql;
+  buildLayerControl();
   if(YEARS.length){ setLoadedStatus(); render(+slider.value); } else { statusEl.textContent=t.pick; }
 }
 const uilangSel=document.getElementById('uilang');
