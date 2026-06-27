@@ -13,7 +13,8 @@
   header{padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center}
   header h1{font-size:16px;font-weight:600;margin:0 12px 0 0}
   select,button{font-size:14px;border-radius:8px;border:1px solid var(--line);background:#1b222c;color:var(--text);padding:7px 10px}
-  select{min-width:280px}
+  #species{min-width:240px}
+  #uilang{min-width:0;padding:7px 8px}
   button{cursor:pointer}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
   button:disabled{opacity:.5;cursor:default}
@@ -32,13 +33,17 @@
   details{font-size:12px;color:var(--muted)}
   details pre{white-space:pre-wrap;background:#1b222c;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:180px;overflow:auto}
   a{color:#8fc7dd}
-  .imgcard{width:188px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.3);font-size:12px;color:#1b222c}
-  .imgcard img{display:block;width:100%;height:130px;object-fit:cover;background:#eceae6}
-  .imgcard .cap{padding:6px 8px;font-style:italic}
+  .imgcard{width:236px;max-height:calc(100vh - 24px);overflow:auto;background:#fff;border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,.3);font-size:12px;color:#1b222c}
+  .imgcard img{display:block;width:100%;height:140px;object-fit:cover;background:#eceae6}
+  .imgcard .cap{padding:6px 9px 2px;font-style:italic;font-weight:600}
+  .imgcard .intro{padding:4px 9px 6px;line-height:1.4;color:#2a2f37;font-size:11.5px}
   .imgcard .need{padding:16px 10px;text-align:center;background:#fff8e1;color:#8a6d00;font-weight:600}
-  .imgcard .src{padding:4px 8px;color:#7a8694;font-size:11px}
+  .imgcard .langnote{padding:5px 9px;background:#fff8e1;color:#8a6d00;font-size:11px}
+  .imgcard .src{padding:4px 9px;color:#7a8694;font-size:11px}
+  .imgcard a.more{display:block;padding:2px 9px 8px;font-size:11.5px;color:#2E7D9A;text-decoration:none}
+  .imgcard select.langsel{margin:4px 9px 8px;width:calc(100% - 18px);font-size:11px;border:1px solid #ccd3da;border-radius:6px;padding:4px 6px;background:#fff;color:#1b222c}
   .imgcard a{color:#2E7D9A;text-decoration:none}
-  .imgcard .ids{padding:2px 8px 8px}
+  .imgcard .ids{padding:2px 9px 9px}
   .imgcard .ids>div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-top:1px solid #ececec;font-size:11.5px}
   .imgcard .ids .k{color:#7a8694}
   .imgcard .ids .miss{color:#c2ad4d}
@@ -47,10 +52,11 @@
 <body>
 <div id="app">
   <header>
-    <h1>EU invasive species spread</h1>
+    <h1 id="title">EU invasive species spread</h1>
     <select id="species" aria-label="Species"></select>
-    <label class="chk"><input type="checkbox" id="euonly" checked> Europe only</label>
+    <label class="chk"><input type="checkbox" id="euonly" checked> <span id="euonlyLabel">Europe only</span></label>
     <button class="primary" id="load">Load &amp; play</button>
+    <select id="uilang" aria-label="Language" title="Language"></select>
     <span id="status">Pick a species and press “Load &amp; play”.</span>
   </header>
   <div id="map"></div>
@@ -59,10 +65,10 @@
     <span id="year" class="yr">—</span>
     <input type="range" id="slider" min="0" max="1" value="0" step="1" disabled>
     <span id="count" class="yr">—</span>
-    <div class="legend"><span>few</span><div class="grad"></div><span>many</span></div>
+    <div class="legend"><span id="few">few</span><div class="grad"></div><span id="many">many</span></div>
   </div>
   <div style="padding:6px 16px;background:var(--panel);border-top:1px solid var(--line)">
-    <details><summary>SPARQL query (live on qlever.dev/api/gbif)</summary><pre id="qtext"></pre></details>
+    <details><summary id="sparqlLabel">SPARQL query (live on qlever.dev/api/gbif)</summary><pre id="qtext"></pre></details>
   </div>
 </div>
 
@@ -70,7 +76,82 @@
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
 const ENDPOINT = "https://qlever.dev/api/gbif";
-// EU Union-list species. id = accepted GBIF key (synonyms resolved). Some may have no GBIF coverage.
+
+/* ---------- UI translations (browser-language driven, English fallback) ---------- */
+const I18N = {
+  en:{title:"EU invasive species spread",europe:"Europe only",load:"Load & play",
+      pick:"Pick a species and press “Load & play”.",querying:"Querying GBIF…",
+      loaded:"{name} — {n} records · {y0}–{y1}",recordsBy:"{n} records by {y}",
+      noData:"No georeferenced GBIF occurrences for {name}{eu}.",inEurope:" in Europe",
+      failed:"Query failed: {m}",corsHint:"(if you opened the file directly, serve the page via a local web server.)",
+      few:"few",many:"many",sparql:"SPARQL query (live on qlever.dev/api/gbif)",
+      imgNeeded:"Image needed on Wikidata",notLinked:"Not linked to Wikidata (no GBIF ID / P846)",loading:"loading…",
+      showingInstead:"No Wikipedia article in {req} — showing {lang}.",noArticleAny:"No Wikipedia article available.",
+      readMore:"Read on Wikipedia →",showIn:"Show in"},
+  nl:{title:"Verspreiding invasieve EU-soorten",europe:"Alleen Europa",load:"Laden & afspelen",
+      pick:"Kies een soort en klik op “Laden & afspelen”.",querying:"GBIF wordt bevraagd…",
+      loaded:"{name} — {n} waarnemingen · {y0}–{y1}",recordsBy:"{n} waarnemingen t/m {y}",
+      noData:"Geen gegeoreferenceerde GBIF-waarnemingen voor {name}{eu}.",inEurope:" in Europa",
+      failed:"Query mislukt: {m}",corsHint:"(als je het bestand rechtstreeks opende, serveer de pagina via een lokale webserver.)",
+      few:"weinig",many:"veel",sparql:"SPARQL-query (live op qlever.dev/api/gbif)",
+      imgNeeded:"Afbeelding nodig op Wikidata",notLinked:"Niet gekoppeld aan Wikidata (geen GBIF-ID / P846)",loading:"laden…",
+      showingInstead:"Geen Wikipedia-artikel in het {req} — {lang} wordt getoond.",noArticleAny:"Geen Wikipedia-artikel beschikbaar.",
+      readMore:"Lees verder op Wikipedia →",showIn:"Toon in"},
+  fr:{title:"Propagation des espèces exotiques envahissantes (UE)",europe:"Europe seulement",load:"Charger et lire",
+      pick:"Choisissez une espèce puis cliquez sur « Charger et lire ».",querying:"Interrogation de GBIF…",
+      loaded:"{name} — {n} observations · {y0}–{y1}",recordsBy:"{n} observations jusqu’en {y}",
+      noData:"Aucune observation GBIF géoréférencée pour {name}{eu}.",inEurope:" en Europe",
+      failed:"Échec de la requête : {m}",corsHint:"(si vous avez ouvert le fichier directement, servez la page via un serveur web local.)",
+      few:"peu",many:"beaucoup",sparql:"Requête SPARQL (en direct sur qlever.dev/api/gbif)",
+      imgNeeded:"Image requise sur Wikidata",notLinked:"Non lié à Wikidata (pas d’identifiant GBIF / P846)",loading:"chargement…",
+      showingInstead:"Aucun article Wikipédia en {req} — affichage en {lang}.",noArticleAny:"Aucun article Wikipédia disponible.",
+      readMore:"Lire sur Wikipédia →",showIn:"Afficher en"},
+  de:{title:"Ausbreitung invasiver EU-Arten",europe:"Nur Europa",load:"Laden & abspielen",
+      pick:"Wählen Sie eine Art und klicken Sie auf „Laden & abspielen“.",querying:"GBIF wird abgefragt…",
+      loaded:"{name} — {n} Nachweise · {y0}–{y1}",recordsBy:"{n} Nachweise bis {y}",
+      noData:"Keine georeferenzierten GBIF-Nachweise für {name}{eu}.",inEurope:" in Europa",
+      failed:"Abfrage fehlgeschlagen: {m}",corsHint:"(wenn Sie die Datei direkt geöffnet haben, stellen Sie die Seite über einen lokalen Webserver bereit.)",
+      few:"wenige",many:"viele",sparql:"SPARQL-Abfrage (live auf qlever.dev/api/gbif)",
+      imgNeeded:"Bild auf Wikidata benötigt",notLinked:"Nicht mit Wikidata verknüpft (keine GBIF-ID / P846)",loading:"lädt…",
+      showingInstead:"Kein Wikipedia-Artikel auf {req} — {lang} wird angezeigt.",noArticleAny:"Kein Wikipedia-Artikel verfügbar.",
+      readMore:"Auf Wikipedia lesen →",showIn:"Anzeigen in"},
+  es:{title:"Propagación de especies invasoras de la UE",europe:"Solo Europa",load:"Cargar y reproducir",
+      pick:"Elija una especie y pulse «Cargar y reproducir».",querying:"Consultando GBIF…",
+      loaded:"{name} — {n} registros · {y0}–{y1}",recordsBy:"{n} registros hasta {y}",
+      noData:"No hay registros GBIF georreferenciados para {name}{eu}.",inEurope:" en Europa",
+      failed:"Consulta fallida: {m}",corsHint:"(si abrió el archivo directamente, sirva la página mediante un servidor web local.)",
+      few:"pocos",many:"muchos",sparql:"Consulta SPARQL (en vivo en qlever.dev/api/gbif)",
+      imgNeeded:"Falta imagen en Wikidata",notLinked:"No vinculado a Wikidata (sin ID de GBIF / P846)",loading:"cargando…",
+      showingInstead:"No hay artículo de Wikipedia en {req}; se muestra {lang}.",noArticleAny:"No hay artículo de Wikipedia disponible.",
+      readMore:"Leer en Wikipedia →",showIn:"Mostrar en"},
+  it:{title:"Diffusione delle specie invasive dell’UE",europe:"Solo Europa",load:"Carica e riproduci",
+      pick:"Scegli una specie e premi «Carica e riproduci».",querying:"Interrogazione di GBIF…",
+      loaded:"{name} — {n} record · {y0}–{y1}",recordsBy:"{n} record fino al {y}",
+      noData:"Nessun record GBIF georeferenziato per {name}{eu}.",inEurope:" in Europa",
+      failed:"Query non riuscita: {m}",corsHint:"(se hai aperto il file direttamente, servi la pagina tramite un server web locale.)",
+      few:"pochi",many:"molti",sparql:"Query SPARQL (in diretta su qlever.dev/api/gbif)",
+      imgNeeded:"Immagine necessaria su Wikidata",notLinked:"Non collegato a Wikidata (nessun ID GBIF / P846)",loading:"caricamento…",
+      showingInstead:"Nessun articolo di Wikipedia in {req} — mostro {lang}.",noArticleAny:"Nessun articolo di Wikipedia disponibile.",
+      readMore:"Leggi su Wikipedia →",showIn:"Mostra in"},
+  pt:{title:"Propagação de espécies invasoras da UE",europe:"Apenas Europa",load:"Carregar e reproduzir",
+      pick:"Escolha uma espécie e clique em «Carregar e reproduzir».",querying:"A consultar o GBIF…",
+      loaded:"{name} — {n} registos · {y0}–{y1}",recordsBy:"{n} registos até {y}",
+      noData:"Sem registos GBIF georreferenciados para {name}{eu}.",inEurope:" na Europa",
+      failed:"Consulta falhou: {m}",corsHint:"(se abriu o ficheiro diretamente, sirva a página através de um servidor web local.)",
+      few:"poucos",many:"muitos",sparql:"Consulta SPARQL (ao vivo em qlever.dev/api/gbif)",
+      imgNeeded:"Imagem necessária na Wikidata",notLinked:"Não associado à Wikidata (sem ID GBIF / P846)",loading:"a carregar…",
+      showingInstead:"Sem artigo da Wikipédia em {req} — a mostrar {lang}.",noArticleAny:"Nenhum artigo da Wikipédia disponível.",
+      readMore:"Ler na Wikipédia →",showIn:"Mostrar em"}
+};
+const navLang=(navigator.language||'en').slice(0,2).toLowerCase();
+let UILANG = I18N[navLang] ? navLang : 'en';
+let contentLang = UILANG;   // language for the Wikipedia summary (user-overridable in the card)
+function fmt(s,o){return String(s).replace(/\{(\w+)\}/g,(_,k)=>o[k]!=null?o[k]:'');}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+let langName = c=>c;
+function rebuildLangName(){ try{ const dn=new Intl.DisplayNames([UILANG],{type:'language'}); langName=c=>{const v=dn.of(c);return v?v.charAt(0).toUpperCase()+v.slice(1):c;}; }catch(e){ langName=c=>c; } }
+rebuildLangName();
+
 const SPECIES = [
 {n:"Acacia saligna",id:2978552},{n:"Acacia mearnsii",id:2979775},{n:"Acridotheres cristatellus",id:2489010},{n:"Acridotheres tristis",id:2489005},{n:"Ailanthus altissima",id:3190653},{n:"Alopochen aegyptiaca",id:2498252},{n:"Alternanthera philoxeroides",id:3084923},{n:"Ameiurus melas",id:2340977},{n:"Andropogon virginicus",id:2706080},{n:"Arthurdendyus triangulatus",id:2502792},{n:"Asclepias syriaca",id:3170247},{n:"Asterias amurensis",id:5187508},{n:"Axis axis",id:2440934},{n:"Baccharis halimifolia",id:3129663},{n:"Bipalium kewense",id:2502938},{n:"Brachyponera chinensis",id:1319870},{n:"Broussonetia papyrifera",id:5361944},{n:"Cabomba caroliniana",id:2882443},{n:"Callosciurus erythraeus",id:2437394},{n:"Callosciurus finlaysonii",id:2437399},{n:"Cardiospermum grandiflorum",id:3189935},{n:"Cervus nippon",id:2440954},{n:"Channa argus",id:4284921},{n:"Cherax destructor",id:4417558},{n:"Cipangopaludina chinensis",id:9738098},{n:"Cortaderia jubata",id:2704521},{n:"Corvus splendens",id:2482499},{n:"Crassula helmsii",id:5362054},{n:"Delairea odorata",id:3134183},{n:"Ehrharta calycina",id:2702865},{n:"Pontederia crassipes",id:2765942},{n:"Elodea nuttallii",id:5329212},{n:"Eriocheir sinensis",id:2225776},{n:"Faxonius immunis",id:8930656},{n:"Faxonius rusticus",id:8979506},{n:"Fundulus heteroclitus",id:5712056},{n:"Gambusia affinis",id:2350580},{n:"Gambusia holbrooki",id:2350570},{n:"Gunnera tinctoria",id:2984306},{n:"Gymnocoronis spilanthoides",id:6063677},{n:"Hakea sericea",id:7287606},{n:"Heracleum mantegazzianum",id:3034825},{n:"Heracleum persicum",id:3628745},{n:"Heracleum sosnowskyi",id:3642949},{n:"Herpestes javanicus",id:2434271},{n:"Humulus scandens",id:2984537},{n:"Hydrocotyle ranunculoides",id:7978544},{n:"Impatiens glandulifera",id:2891770},{n:"Koenigia polystachya",id:8848208},{n:"Lagarosiphon major",id:2865565},{n:"Lampropeltis getula",id:9799308},{n:"Lepomis gibbosus",id:2394486},{n:"Lespedeza cuneata",id:8114276},{n:"Limnoperna fortunei",id:5855350},{n:"Lithobates catesbeianus",id:2427091},{n:"Ludwigia grandiflora",id:5421039},{n:"Ludwigia peploides",id:5420991},{n:"Lygodium japonicum",id:2650436},{n:"Lysichiton americanus",id:2869311},{n:"Marisa cornuarietis",id:2292586},{n:"Microstegium vimineum",id:5289808},{n:"Misgurnus anguillicaudatus",id:2367919},{n:"Misgurnus bipartitus",id:2367911},{n:"Morone americana",id:2394604},{n:"Mulinia lateralis",id:2286388},{n:"Muntiacus reevesi",id:2440946},{n:"Myocastor coypus",id:4264680},{n:"Myriophyllum aquaticum",id:5361785},{n:"Myriophyllum heterophyllum",id:5361762},{n:"Nanozostera japonica",id:2863943},{n:"Nasua nasua",id:2433536},{n:"Nyctereutes procyonoides",id:2434552},{n:"Obama nungara",id:8701771},{n:"Ondatra zibethicus",id:5219858},{n:"Orconectes limosus",id:8909595},{n:"Orconectes virilis",id:8971201},{n:"Oxyura jamaicensis",id:2498305},{n:"Pacifastacus leniusculus",id:2226990},{n:"Parthenium hysterophorus",id:3086784},{n:"Cenchrus setaceus",id:5828232},{n:"Perccottus glenii",id:2390064},{n:"Persicaria perfoliata",id:4033648},{n:"Pistia stratiotes",id:2870583},{n:"Platydemus manokwari",id:5892137},{n:"Plotosus lineatus",id:7965247},{n:"Procambarus clarkii",id:2227300},{n:"Procambarus fallax",id:2227309},{n:"Procyon lotor",id:5218786},{n:"Prosopis juliflora",id:5358460},{n:"Pseudorasbora parva",id:2362868},{n:"Pueraria montana",id:2977636},{n:"Pycnonotus cafer",id:2486131},{n:"Pycnonotus jocosus",id:2486151},{n:"Reynoutria japonica",id:2889173},{n:"Reynoutria sachalinensis",id:2889088},{n:"Reynoutria bohemica",id:4038485},{n:"Rugulopteryx okamurae",id:5824863},{n:"Salvinia molesta",id:5274863},{n:"Sciurus carolinensis",id:5219681},{n:"Sciurus niger",id:5219683},{n:"Solenopsis geminata",id:5035187},{n:"Solenopsis invicta",id:5035230},{n:"Solenopsis richteri",id:5035017},{n:"Tamias sibiricus",id:2437450},{n:"Threskiornis aethiopicus",id:2480764},{n:"Trachemys scripta",id:2443002},{n:"Triadica sebifera",id:3054399},{n:"Vespa mandarinia",id:5871429},{n:"Vespa velutina",id:1311477},{n:"Wasmannia auropunctata",id:1315391},{n:"Xenopus laevis",id:5217334}
 ].sort((a,b)=>a.n.localeCompare(b.n));
@@ -85,44 +166,97 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
 const GRAD={0.0:'#3288bd',0.2:'#66c2a5',0.4:'#abdda4',0.55:'#e6f598',0.68:'#fee08b',0.8:'#fdae61',0.9:'#f46d43',1.0:'#d53e4f'};
 let heat=L.heatLayer([],{radius:13,blur:20,minOpacity:.35,max:1.0,gradient:GRAD}).addTo(map);
 
-// Wikidata species image: GBIF id --P846--> item --P18--> image
+/* ---------- info card: Wikidata image + identifiers + Wikipedia intro (multilingual) ---------- */
 const WDEP="https://qlever.dev/api/wikidata";
 const imgCtl=L.control({position:'topright'});
-imgCtl.onAdd=function(){const d=L.DomUtil.create('div','imgcard');d.id='imgcard';d.style.display='none';L.DomEvent.disableClickPropagation(d);return d;};
+imgCtl.onAdd=function(){const d=L.DomUtil.create('div','imgcard');d.id='imgcard';d.style.display='none';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
 imgCtl.addTo(map);
-async function loadImage(gbifId,name){
+
+let curSpecies=null, infoToken=0;
+
+async function loadInfo(s){
+  curSpecies=s;
+  const t=I18N[UILANG];
   const card=document.getElementById('imgcard'); if(!card) return;
-  card.style.display='block'; card.innerHTML='<div class="src">loading…</div>';
-  const q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n'+
-    'SELECT ?wd (SAMPLE(?image) AS ?img) (SAMPLE(?inat) AS ?inatId) (SAMPLE(?ncbi) AS ?ncbiId) WHERE {\n'+
-    '  ?wd wdt:P846 "'+gbifId+'" .\n'+
-    '  OPTIONAL { ?wd wdt:P18 ?image } OPTIONAL { ?wd wdt:P3151 ?inat } OPTIONAL { ?wd wdt:P685 ?ncbi }\n'+
-    '} GROUP BY ?wd LIMIT 1';
-  const row=(k,val,href)=>'<div><span class="k">'+k+'</span><span class="v">'+
-    (val?('<a href="'+href+'" target="_blank" rel="noopener">'+val+'</a>'):'<span class="miss">—</span>')+'</span></div>';
+  const myToken=++infoToken;
+  card.style.display='block';
+  card.innerHTML='<div class="src">'+t.loading+'</div>';
+
+  // 1) Wikidata QID + image + cross-DB identifiers, via QLever
+  let qid=null,img=null,inat=null,ncbi=null;
   try{
+    const q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n'+
+      'SELECT ?wd (SAMPLE(?image) AS ?img) (SAMPLE(?inat) AS ?inatId) (SAMPLE(?ncbi) AS ?ncbiId) WHERE {\n'+
+      '  ?wd wdt:P846 "'+s.id+'" .\n'+
+      '  OPTIONAL { ?wd wdt:P18 ?image } OPTIONAL { ?wd wdt:P3151 ?inat } OPTIONAL { ?wd wdt:P685 ?ncbi }\n'+
+      '} GROUP BY ?wd LIMIT 1';
     const r=await fetch(WDEP+'?query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}});
     const b=(await r.json()).results.bindings[0];
-    if(b && b.wd){
-      const qid=b.wd.value.split('/').pop();
-      const inat=(b.inatId&&b.inatId.value)?b.inatId.value:null;
-      const ncbi=(b.ncbiId&&b.ncbiId.value)?b.ncbiId.value:null;
-      const top=(b.img&&b.img.value)
-        ? '<a href="https://www.wikidata.org/wiki/'+qid+'" target="_blank" rel="noopener"><img src="'+b.img.value.replace(/^http:/,'https:')+'?width=320" alt="'+name+'"></a>'
-        : '<div class="need">Image needed on Wikidata</div>';
-      card.innerHTML=top+'<div class="cap">'+name+'</div><div class="ids">'+
-        row('Wikidata', qid, 'https://www.wikidata.org/wiki/'+qid)+
-        row('GBIF', gbifId, 'https://www.gbif.org/species/'+gbifId)+
-        row('iNaturalist', inat, inat?('https://www.inaturalist.org/taxa/'+inat):'')+
-        row('NCBI taxon', ncbi, ncbi?('https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id='+ncbi):'')+
-      '</div>';
-    } else {
-      card.innerHTML='<div class="need">Image needed on Wikidata</div><div class="src">not linked to Wikidata (no P846)</div>';
-    }
-  }catch(e){ card.innerHTML='<div class="need">Image needed on Wikidata</div>'; }
+    if(b&&b.wd){ qid=b.wd.value.split('/').pop();
+      img=b.img&&b.img.value?b.img.value:null;
+      inat=b.inatId&&b.inatId.value?b.inatId.value:null;
+      ncbi=b.ncbiId&&b.ncbiId.value?b.ncbiId.value:null; }
+  }catch(e){}
+  if(myToken!==infoToken) return;
+
+  // 2) Wikipedia article: which languages exist (Wikidata sitelinks) + the summary extract
+  let intro=null, langUsed=null, wikiLangs={}, pageUrl=null;
+  const reqLang=contentLang;
+  if(qid){
+    try{
+      const sl=await fetch('https://www.wikidata.org/w/api.php?action=wbgetentities&ids='+qid+'&props=sitelinks&format=json&origin=*').then(r=>r.json());
+      const links=(sl.entities&&sl.entities[qid]&&sl.entities[qid].sitelinks)||{};
+      const skip=['commons','species','meta','mediawiki','wikimania','incubator','sources','outreach','foundation','wikidata'];
+      for(const k in links){ const m=k.match(/^([a-z][a-z0-9_]*)wiki$/); if(m && skip.indexOf(m[1])<0){ wikiLangs[m[1].replace(/_/g,'-')]=links[k].title; } }
+      if(Object.keys(wikiLangs).length){
+        langUsed = wikiLangs[reqLang] ? reqLang : (wikiLangs['en'] ? 'en' : Object.keys(wikiLangs).sort()[0]);
+        const title=wikiLangs[langUsed];
+        const sum=await fetch('https://'+langUsed+'.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title)).then(r=>r.ok?r.json():null);
+        if(sum){ intro=sum.extract||null;
+          pageUrl=(sum.content_urls&&sum.content_urls.desktop&&sum.content_urls.desktop.page)||('https://'+langUsed+'.wikipedia.org/wiki/'+encodeURIComponent(title)); }
+      }
+    }catch(e){}
+  }
+  if(myToken!==infoToken) return;
+
+  // 3) render
+  const row=(k,val,href)=>'<div><span class="k">'+k+'</span><span class="v">'+
+    (val?('<a href="'+href+'" target="_blank" rel="noopener">'+val+'</a>'):'<span class="miss">—</span>')+'</span></div>';
+  let html = img
+    ? '<a href="https://www.wikidata.org/wiki/'+qid+'" target="_blank" rel="noopener"><img src="'+img.replace(/^http:/,'https:')+'?width=380" alt="'+esc(s.n)+'"></a>'
+    : '<div class="need">'+t.imgNeeded+'</div>';
+  html += '<div class="cap">'+esc(s.n)+'</div>';
+  if(intro){
+    let txt=intro; if(txt.length>340) txt=txt.slice(0,337).replace(/\s+\S*$/,'')+'…';
+    html += '<div class="intro">'+esc(txt)+'</div>';
+    if(langUsed!==reqLang) html += '<div class="langnote">'+fmt(t.showingInstead,{req:langName(reqLang),lang:langName(langUsed)})+'</div>';
+    if(pageUrl) html += '<a class="more" href="'+pageUrl+'" target="_blank" rel="noopener">'+t.readMore+'</a>';
+  } else if(qid){
+    html += '<div class="langnote">'+t.noArticleAny+'</div>';
+  }
+  const langs=Object.keys(wikiLangs).sort((a,b)=>langName(a).localeCompare(langName(b)));
+  if(langs.length>1){
+    html += '<select class="langsel" aria-label="'+esc(t.showIn)+'">';
+    langs.forEach(l=>{ html += '<option value="'+l+'"'+(l===langUsed?' selected':'')+'>'+esc(langName(l))+'</option>'; });
+    html += '</select>';
+  }
+  if(qid){
+    html += '<div class="ids">'+
+      row('Wikidata', qid, 'https://www.wikidata.org/wiki/'+qid)+
+      row('GBIF', s.id, 'https://www.gbif.org/species/'+s.id)+
+      row('iNaturalist', inat, inat?('https://www.inaturalist.org/taxa/'+inat):'')+
+      row('NCBI taxon', ncbi, ncbi?('https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id='+ncbi):'')+
+    '</div>';
+  } else {
+    html += '<div class="src">'+t.notLinked+'</div>';
+  }
+  card.innerHTML=html;
+  const ls=card.querySelector('.langsel');
+  if(ls) ls.onchange=()=>{ contentLang=ls.value; loadInfo(s); };
 }
 
-let DATA=[], YEARS=[], maxN=1, playing=false, timer=null;
+/* ---------- data + map ---------- */
+let DATA=[], YEARS=[], maxN=1, curTotal=0, playing=false, timer=null;
 const statusEl=document.getElementById('status'),yearEl=document.getElementById('year'),countEl=document.getElementById('count'),
       slider=document.getElementById('slider'),playBtn=document.getElementById('play');
 
@@ -147,13 +281,21 @@ SELECT ?glat ?glon ?year (COUNT(*) AS ?n) WHERE {
 GROUP BY ?glat ?glon ?year`;
 }
 
+function setLoadedStatus(){
+  if(!YEARS.length||!curSpecies) return;
+  statusEl.textContent=fmt(I18N[UILANG].loaded,{name:curSpecies.n,n:curTotal.toLocaleString(UILANG),y0:YEARS[0],y1:YEARS[YEARS.length-1]});
+}
+
 async function load(){
   stop();
+  const t=I18N[UILANG];
   const s=SPECIES[+sel.value], euOnly=document.getElementById('euonly').checked;
-  loadImage(s.id, s.n);
+  // clear the previous species' heatmap immediately so a stale map never sits under a new selection
+  heat.setLatLngs([]); DATA=[]; YEARS=[]; yearEl.textContent='—'; countEl.textContent='—'; slider.disabled=true;
+  loadInfo(s);
   const q=buildQuery(s.id, euOnly);
   document.getElementById('qtext').textContent=q;
-  statusEl.textContent='Querying GBIF…';
+  statusEl.textContent=t.querying;
   document.getElementById('load').disabled=true;
   try{
     const url=ENDPOINT+'?query='+encodeURIComponent(q);
@@ -163,24 +305,24 @@ async function load(){
     const b=j.results.bindings;
     DATA=b.map(x=>({lat:+x.glat.value,lon:+x.glon.value,year:+x.year.value,n:+x.n.value}))
           .filter(d=>isFinite(d.lat)&&isFinite(d.lon)&&d.year);
-    if(!DATA.length){ statusEl.textContent='No georeferenced GBIF occurrences for '+s.n+(euOnly?' in Europe.':'.'); heat.setLatLngs([]); slider.disabled=true; yearEl.textContent='—'; countEl.textContent='—'; document.getElementById('load').disabled=false; return; }
+    if(!DATA.length){ statusEl.textContent=fmt(t.noData,{name:s.n,eu:euOnly?t.inEurope:''}); heat.setLatLngs([]); slider.disabled=true; yearEl.textContent='—'; countEl.textContent='—'; document.getElementById('load').disabled=false; return; }
     YEARS=[...new Set(DATA.map(d=>d.year))].sort((a,b)=>a-b);
     // reduce(), not Math.max(...arr): DATA can hold 100k+ grid×year rows and spreading blows the call stack
     let minLat=Infinity,maxLat=-Infinity,minLon=Infinity,maxLon=-Infinity;
-    maxN=0;
-    let total=0;
+    maxN=0; curTotal=0;
     for(const d of DATA){
       if(d.n>maxN) maxN=d.n;
-      total+=d.n;
+      curTotal+=d.n;
       if(d.lat<minLat) minLat=d.lat; if(d.lat>maxLat) maxLat=d.lat;
       if(d.lon<minLon) minLon=d.lon; if(d.lon>maxLon) maxLon=d.lon;
     }
     slider.min=0; slider.max=YEARS.length-1; slider.value=0; slider.disabled=false;
     map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[20,20],maxZoom:6});
-    statusEl.textContent=s.n+' — '+total.toLocaleString()+' records · '+YEARS[0]+'–'+YEARS[YEARS.length-1];
+    setLoadedStatus();
     render(0); play();
   }catch(e){
-    statusEl.textContent='Query failed: '+e.message+' (if this is a CORS/file issue, serve the page via a local web server).';
+    const isNet=(e instanceof TypeError);
+    statusEl.textContent=fmt(t.failed,{m:e.message})+(isNet?' '+t.corsHint:'');
   }
   document.getElementById('load').disabled=false;
 }
@@ -191,16 +333,39 @@ function render(idx){
   for(const d of DATA){ if(d.year<=y){ cum+=d.n; pts.push([d.lat,d.lon, Math.log1p(d.n)/Math.log1p(maxN)]); } }
   heat.setLatLngs(pts);
   yearEl.textContent=y;
-  countEl.textContent=cum.toLocaleString()+' records by '+y;
+  countEl.textContent=fmt(I18N[UILANG].recordsBy,{n:cum.toLocaleString(UILANG),y});
 }
 
 function play(){ if(!YEARS.length)return; playing=true; playBtn.textContent='⏸';
   timer=setInterval(()=>{ let i=+slider.value; if(i>=YEARS.length-1){ stop(); return; } slider.value=i+1; render(i+1); }, 550); }
 function stop(){ playing=false; playBtn.textContent='▶'; if(timer){clearInterval(timer);timer=null;} }
 
+/* ---------- i18n wiring ---------- */
+function applyI18n(){
+  const t=I18N[UILANG];
+  document.documentElement.lang=UILANG;
+  document.getElementById('title').textContent=t.title;
+  document.getElementById('euonlyLabel').textContent=t.europe;
+  document.getElementById('load').textContent=t.load;
+  document.getElementById('few').textContent=t.few;
+  document.getElementById('many').textContent=t.many;
+  document.getElementById('sparqlLabel').textContent=t.sparql;
+  if(YEARS.length){ setLoadedStatus(); render(+slider.value); } else { statusEl.textContent=t.pick; }
+}
+const uilangSel=document.getElementById('uilang');
+function refreshUilangLabels(){ [...uilangSel.options].forEach(o=>o.textContent=langName(o.value)); }
+Object.keys(I18N).forEach(code=>{const o=document.createElement('option');o.value=code;o.textContent=langName(code);uilangSel.appendChild(o);});
+uilangSel.value=UILANG;
+uilangSel.onchange=()=>{ UILANG=uilangSel.value; contentLang=UILANG; rebuildLangName(); refreshUilangLabels(); applyI18n(); if(curSpecies) loadInfo(curSpecies); };
+
+/* selecting a species (or toggling Europe-only) now loads immediately — no stale map */
+sel.onchange=load;
+document.getElementById('euonly').onchange=load;
 playBtn.onclick=()=>{ if(playing) stop(); else { if(+slider.value>=YEARS.length-1) {slider.value=0;render(0);} play(); } };
 slider.oninput=()=>{ stop(); render(+slider.value); };
 document.getElementById('load').onclick=load;
+
+applyI18n();
 </script>
 </body>
 </html>
