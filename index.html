@@ -165,11 +165,18 @@ async function load(){
           .filter(d=>isFinite(d.lat)&&isFinite(d.lon)&&d.year);
     if(!DATA.length){ statusEl.textContent='No georeferenced GBIF occurrences for '+s.n+(euOnly?' in Europe.':'.'); heat.setLatLngs([]); slider.disabled=true; yearEl.textContent='—'; countEl.textContent='—'; document.getElementById('load').disabled=false; return; }
     YEARS=[...new Set(DATA.map(d=>d.year))].sort((a,b)=>a-b);
-    maxN=Math.max(...DATA.map(d=>d.n));
-    const total=DATA.reduce((a,d)=>a+d.n,0);
+    // reduce(), not Math.max(...arr): DATA can hold 100k+ grid×year rows and spreading blows the call stack
+    let minLat=Infinity,maxLat=-Infinity,minLon=Infinity,maxLon=-Infinity;
+    maxN=0;
+    let total=0;
+    for(const d of DATA){
+      if(d.n>maxN) maxN=d.n;
+      total+=d.n;
+      if(d.lat<minLat) minLat=d.lat; if(d.lat>maxLat) maxLat=d.lat;
+      if(d.lon<minLon) minLon=d.lon; if(d.lon>maxLon) maxLon=d.lon;
+    }
     slider.min=0; slider.max=YEARS.length-1; slider.value=0; slider.disabled=false;
-    const lats=DATA.map(d=>d.lat),lons=DATA.map(d=>d.lon);
-    map.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[20,20],maxZoom:6});
+    map.fitBounds([[minLat,minLon],[maxLat,maxLon]],{padding:[20,20],maxZoom:6});
     statusEl.textContent=s.n+' — '+total.toLocaleString()+' records · '+YEARS[0]+'–'+YEARS[YEARS.length-1];
     render(0); play();
   }catch(e){
